@@ -15,7 +15,7 @@ short = True
 
 USE_TEMP_DIR = True #True/False
 temp_dir = '/mnt/beegfs/users/erlenhor'
-version = 'full_model_interpolated-cap_update'
+version = 'full_model'
 NoOfPeriods = 8
 
 NoOfScenarios = 3
@@ -90,17 +90,18 @@ def get_unique_filename(base_path, filename):
 #######
 ##RUN##
 #######
-if FLEX_IND is True:
-    ind_str = 'flexible_industry'
-else:
-    ind_str = 'inflexible_industry'
-
-if GREEN_H2 is True:
-    green_str = 'green_H2'
-else:
-    green_str = 'no_green_H2' 
-
-name = f'green_prod_tot'
+name_str = 'EMPIRE'
+if ADDITIVITY_GH2:
+    name_str += '_Additionality'
+if SPATIAL_AND_TEMPORAL_GH2:
+    name_str += '_Spatial_Temporal'
+if ONLY_SPATIAL_GH2:
+    name_str += '_Spatial'
+if ONLY_TEMPORAL_GH2:
+    name_str += '_Temporal'
+if RENEWABLE_GRID_RULE:
+    name_str += '_90Exemption'
+name = name_str 
 if short:
     name = f'short'
 workbook_path = 'Data handler/' + version
