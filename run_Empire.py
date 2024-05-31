@@ -14,7 +14,7 @@ import os
 short = False
 USE_TEMP_DIR = True #True/False
 temp_dir = '/mnt/beegfs/users/erlenhor'
-version = 'full_model_interpolated'
+version = 'full_model'
 NoOfPeriods = 8
 
 NoOfScenarios = 3
