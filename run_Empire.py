@@ -11,11 +11,10 @@ import os
 ##USER##
 ########
 
-short = True
-
+short = False
 USE_TEMP_DIR = True #True/False
 temp_dir = '/mnt/beegfs/users/erlenhor'
-version = 'full_model'
+version = 'full_model_interpolated'
 NoOfPeriods = 8
 
 NoOfScenarios = 3
@@ -26,31 +25,27 @@ NoOfPeakSeason = 2
 lengthPeakSeason = 24
 discountrate = 0.05
 WACC = 0.05
+HEATMODULE = False
 LeapYearsInvestment = 3
 solver = "Gurobi" #"Gurobi" #"CPLEX" #"Xpress"
-
-#If using fixed sample set scenariogeneration to False and FIX_SAMPLE to True
 scenariogeneration = True
-FIX_SAMPLE = False
-
-WRITE_LP = False
-PICKLE_INSTANCE = False
+EMISSION_CAP = True #False
+WRITE_LP = False #True
+PICKLE_INSTANCE = False #True
 hydrogen=True
+FIX_SAMPLE = False
 FLEX_IND = True
 Reformer_H2 = False
 
-#Turning Green Hydrogen module to True and ensuring all hydrogen from electrolysis is Green
 GREEN_H2 = True
 ONLY_GREEN = True
-
-#Green hydrogen rules
 ADDITIVITY_GH2= True
 
 SPATIAL_AND_TEMPORAL_GH2= True
 ONLY_TEMPORAL_GH2= False
 ONLY_SPATIAL_GH2= False
 
-RENEWABLE_GRID_RUlE = True
+RENEWABLE_GRID_RULE = True
 
 
 GREEN_PROD_REQUIREMENT=[10400314.24,
@@ -62,12 +57,23 @@ GREEN_PROD_REQUIREMENT=[10400314.24,
                         14864796.39,
                         14846592.11]
 
-GREEN_PROD_REQUIREMENT= [0,0,0,0,0,0,0,0]
+GREEN_INV_REQUIREMENT= [1193,
+                        1218,
+                        1270,
+                        1270,
+                        1314,
+                        1501,
+                        2058,
+                        2193]
+
+GREEN_INV_REQUIREMENT=[0,0,0,0,0,0,0,0]
+#GREEN_PROD_REQUIREMENT= [0,0,0,0,0,0,0,0]
 
 if short:
     NoOfPeriods = 2
     version = 'short_model'
     scenariogeneration = True
+    GREEN_INV_REQUIREMENT=[0,5,0,0,0,0,0,0]
     GREEN_PROD_REQUIREMENT= [20,0,0,0,0,0,0,0]
 
 
@@ -90,24 +96,23 @@ def get_unique_filename(base_path, filename):
 #######
 ##RUN##
 #######
-name_str = 'EMPIRE'
-if ADDITIVITY_GH2:
-    name_str += '_Additionality'
-if SPATIAL_AND_TEMPORAL_GH2:
-    name_str += '_Spatial_Temporal'
-if ONLY_SPATIAL_GH2:
-    name_str += '_Spatial'
-if ONLY_TEMPORAL_GH2:
-    name_str += '_Temporal'
-if RENEWABLE_GRID_RULE:
-    name_str += '_90Exemption'
-name = name_str 
+if FLEX_IND is True:
+    ind_str = 'flexible_industry'
+else:
+    ind_str = 'inflexible_industry'
+
+if GREEN_H2 is True:
+    green_str = 'green_H2'
+else:
+    green_str = 'no_green_H2' 
+
+name = f'AST'
 if short:
-    name = f'short'
+    name = f'short_no_green'
 workbook_path = 'Data handler/' + version
 tab_file_path = 'Data handler/' + version + '/Tab_Files_' + name
 scenario_data_path = 'Data handler/' + version + '/ScenarioData'
-result_file_path = get_unique_filename('Results/',name)
+result_file_path = get_unique_filename('short_Runs/',name)
 FirstHoursOfRegSeason = [lengthRegSeason*i + 1 for i in range(NoOfRegSeason)]
 FirstHoursOfPeakSeason = [lengthRegSeason*NoOfRegSeason + lengthPeakSeason*i + 1 for i in range(NoOfPeakSeason)]
 Period = [i + 1 for i in range(NoOfPeriods)]
@@ -171,6 +176,8 @@ include_results = [
                     'results_natural_gas_power',
                     'results_output_gen_el',
                     'results_objective',
+                    'results_objective_detailed',
+                    'results_objective_transmission',
                     'results_CO2_sequestration_investments',
                     'results_output_stor',
                     'results_hydrogen_storage_investments',
@@ -202,7 +209,6 @@ include_results = [
                     'results_power_balance',
                     'results_hydrogen_pipeline_operational'
                     ]
-
 
 
 
@@ -239,7 +245,7 @@ if scenariogeneration:
     hour=datetime.now().strftime("%H"), minute=datetime.now().strftime("%M"), second=datetime.now().strftime("%S")) + str(tock - tick))
 
 generate_tab_files(filepath = workbook_path, tab_file_path = tab_file_path,
-                   HEATMODULE=HEATMODULE, hydrogen = hydrogen, GREEN_H2=GREEN_H2, RENEWABLE_GRID_RUlE=RENEWABLE_GRID_RUlE)
+                   HEATMODULE=HEATMODULE, hydrogen = hydrogen, GREEN_H2=GREEN_H2, RENEWABLE_GRID_RULE=RENEWABLE_GRID_RULE)
 
 run_empire(name = name,
            tab_file_path = tab_file_path,
@@ -284,6 +290,7 @@ run_empire(name = name,
             ONLY_SPATIAL_GH2=ONLY_SPATIAL_GH2,
             start_year=2021,
             GREEN_PROD_REQUIREMENT=GREEN_PROD_REQUIREMENT,
-            RENEWABLE_GRID_RUlE = RENEWABLE_GRID_RUlE
+            GREEN_INV_REQUIREMENT=GREEN_INV_REQUIREMENT,
+            RENEWABLE_GRID_RULE = RENEWABLE_GRID_RULE
             )
 gc.collect()

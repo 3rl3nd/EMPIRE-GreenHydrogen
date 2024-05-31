@@ -24,12 +24,12 @@ def strfdelta(tdelta, fmt):
 def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenario_data_path,
                solver, temp_dir, FirstHoursOfRegSeason, FirstHoursOfPeakSeason, lengthRegSeason,
                lengthPeakSeason, Period, Operationalhour, Scenario, Season, HoursOfSeason, NoOfRegSeason, NoOfPeakSeason,
-               discountrate, WACC, LeapYearsInvestment, WRITE_LP, PICKLE_INSTANCE,USE_TEMP_DIR, offshoreNodesList, 
-               repurposeCostFactor, repurposeEnergyFlowFactor, include_results, windfarmNodes = None, start_year = 2021, EMISSION_CAP=True,
-               hydrogen=True, HEATMODULE = False, FLEX_IND=True, GREEN_H2=True,Reformer_H2=True,
-               steel_CCS_cost_increase=None, steel_CCS_capture_rate=None, RussianGasCapacityFactor=0,
+               discountrate, WACC, LeapYearsInvestment, WRITE_LP, PICKLE_INSTANCE, EMISSION_CAP,include_results,
+               USE_TEMP_DIR, offshoreNodesList, repurposeCostFactor, repurposeEnergyFlowFactor, windfarmNodes = None, start_year = 2021,
+               hydrogen=False, HEATMODULE = True, FLEX_IND=True, GREEN_H2=True,Reformer_H2=True,
+               steel_CCS_cost_increase=None, steel_CCS_capture_rate=None, RussianGasCapacityFactor=0, 
                SPATIAL_AND_TEMPORAL_GH2=True, ADDITIVITY_GH2=True, ONLY_TEMPORAL_GH2=False, ONLY_SPATIAL_GH2=False,
-               ONLY_GREEN=False,GREEN_PROD_REQUIREMENT=[0,0,0,0,0,0,0],GREEN_INV_REQUIREMENT=[0,0,0,0,0,0,0], RENEWABLE_GRID_RUlE=False):
+               ONLY_GREEN=False,GREEN_PROD_REQUIREMENT=[0,0,0,0,0,0,0],GREEN_INV_REQUIREMENT=[0,0,0,0,0,0,0], RENEWABLE_GRID_RULE=False):
 
     if USE_TEMP_DIR:
         TempfileManager.tempdir = temp_dir
@@ -811,7 +811,7 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
         for g in model.Generator:
             for i in model.Period:
                 costperyear=(model.WACC / (1 - ((1+model.WACC) ** (1-model.genLifetime[g])))) * model.genCapitalCost[g,i] + model.genFixedOMCost[g,i]
-                costperperiod = costperyear * 1000 * (1 - (1+model.discountrate) **-(min(value((len(model.Period)-i+1)*5), value(model.genLifetime[g]))))/ (1 - (1 / (1 + model.discountrate)))
+                costperperiod = costperyear * 1000 * (1 - (1+model.discountrate) **-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.genLifetime[g]))))/ (1 - (1 / (1 + model.discountrate)))
                 # if ('CCS',g) in model.GeneratorsOfTechnology:
                     # 	costperperiod+=model.CCSCostTSFix*model.CCSRemFrac*model.genCO2TypeFactor[g]*(GJperMWh/model.genEfficiency[g,i])
                 model.genInvCost[g,i]=costperperiod
@@ -820,10 +820,10 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
         for b in model.Storage:
             for i in model.Period:
                 costperyearPW=(model.WACC/(1-((1+model.WACC)**(1-model.storageLifetime[b]))))*model.storPWCapitalCost[b,i]+model.storPWFixedOMCost[b,i]
-                costperperiodPW=costperyearPW*1000*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.storageLifetime[b]))))/(1-(1/(1+model.discountrate)))
+                costperperiodPW=costperyearPW*1000*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.storageLifetime[b]))))/(1-(1/(1+model.discountrate)))
                 model.storPWInvCost[b,i]=costperperiodPW
                 costperyearEN=(model.WACC/(1-((1+model.WACC)**(1-model.storageLifetime[b]))))*model.storENCapitalCost[b,i]+model.storENFixedOMCost[b,i]
-                costperperiodEN=costperyearEN*1000*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.storageLifetime[b]))))/(1-(1/(1+model.discountrate)))
+                costperperiodEN=costperyearEN*1000*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.storageLifetime[b]))))/(1-(1/(1+model.discountrate)))
                 model.storENInvCost[b,i]=costperperiodEN
 
         #Transmission
@@ -832,13 +832,13 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
                 for t in model.TransmissionType:
                     if (n1,n2,t) in model.TransmissionTypeOfDirectionalLink:
                         costperyear=(model.WACC/(1-((1+model.WACC)**(1-model.transmissionLifetime[n1,n2]))))*model.transmissionLength[n1,n2]*model.transmissionTypeCapitalCost[t,i] + model.transmissionLength[n1,n2]* model.transmissionTypeFixedOMCost[t,i]
-                        costperperiod=costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.transmissionLifetime[n1,n2]))))/(1-(1/(1+model.discountrate)))
+                        costperperiod=costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.transmissionLifetime[n1,n2]))))/(1-(1/(1+model.discountrate)))
                         model.transmissionInvCost[n1,n2,i]=costperperiod
 
         #Offshore converter
         for i in model.Period:
             costperyear = (model.WACC/(1-((1+model.WACC)**(1-model.offshoreConvLifetime))))*model.offshoreConvCapitalCost[i] + model.offshoreConvOMCost[i]
-            costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5),model.offshoreConvLifetime)))/(1-(1/(1+model.discountrate)))
+            costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment),model.offshoreConvLifetime)))/(1-(1/(1+model.discountrate)))
             model.offshoreConvInvCost[i] = costperperiod
 
         #Steel plants
@@ -847,26 +847,26 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
                 if steel_CCS_cost_increase is not None and 'ccs' in p.lower():
                     model.steel_plantCapitalCost[p,i] = (1 + steel_CCS_cost_increase) * model.steel_plantCapitalCost[p,i]
                 costperyear = (model.WACC/(1-((1+model.WACC)**(1-model.steelPlantLifetime[p]))))*model.steel_plantCapitalCost[p,i] + model.steel_plantFixedOM[p,i]
-                costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5),model.steelPlantLifetime[p])))/(1-(1/(1+model.discountrate)))
+                costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment),model.steelPlantLifetime[p])))/(1-(1/(1+model.discountrate)))
                 model.steel_plantInvCost[p,i] = costperperiod
 
         for i in model.Period:
             for p in model.CementPlants:
                 costperyear = (model.WACC/(1-((1+model.WACC)**(1-model.cementPlantLifetime[p]))))*model.cement_plantCapitalCost[p,i] + model.cement_plantFixedOM[p,i]
-                costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5),model.cementPlantLifetime[p])))/(1-(1/(1+model.discountrate)))
+                costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment),model.cementPlantLifetime[p])))/(1-(1/(1+model.discountrate)))
                 model.cement_plantInvCost[p,i] = costperperiod
 
         for i in model.Period:
             for p in model.AmmoniaPlants:
                 costperyear = (model.WACC/(1-((1+model.WACC)**(1-model.ammoniaPlantLifetime[p]))))*model.ammonia_plantCapitalCost[p,i] + model.ammonia_plantFixedOM[p,i]
-                costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5),model.ammoniaPlantLifetime[p])))/(1-(1/(1+model.discountrate)))
+                costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment),model.ammoniaPlantLifetime[p])))/(1-(1/(1+model.discountrate)))
                 model.ammonia_plantInvCost[p,i] = costperperiod
 
         # #transport
         # for i in model.Period:
         #     for v in model.VehicleTypes:
         #         costperyear = (model.WACC/(1-((1+model.WACC)**(1-model.transport_lifetime[v]))))*model.transport_vehicleCapitalCost[v,i]
-        #         costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5),value(model.transport_lifetime[v]))))/(1-(1/(1+model.discountrate)))
+        #         costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment),value(model.transport_lifetime[v]))))/(1-(1/(1+model.discountrate)))
         #         model.transport_invCost[v,i] = costperperiod
     model.build_InvCost = BuildAction(rule=prepInvCost_rule)
     
@@ -1194,8 +1194,15 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
         model.ReformerLocations = Set(ordered=True, within=model.HydrogenProdNode)
         model.ReformerPlants = Set(ordered=True)
         if GREEN_H2:
+            model.WindfarmMapping = {'Netherlands': ['Netherlands', 'Borssele', 'HollandseeKust'], 
+                    'GreatBrit.': ['GreatBrit.', 'DoggerBank', 'EastAnglia', 'FirthofForth', 'Hornsea', 'MorayFirth', 'Norfolk', 'OuterDowsing'],
+                    'NO2': ['NO2', 'Draupner', 'Sleipner', 'SørligeNordsjøI', 'SørligeNordsjøII', 'UtsiraNord'],
+                    'Germany': ['Germany', 'HelgoländerBucht'],
+                    'Denmark': ['Denmark', 'Nordsøen']}
             model.RESGenerators = Set(within=model.Generator) # Subset for all renweable electricity generators
-            model.NonRenewableGrid = Set(dimen=2, within=model.HydrogenProdNode*model.Period, ordered=True)
+            if RENEWABLE_GRID_RULE:
+                model.NonRenewableGrid = Set(dimen=2, within=model.HydrogenProdNode*model.Period, ordered=True)
+                model.RenewableGrid = Set(dimen=2, within=model.HydrogenProdNode*model.Period, ordered=True)
 
         #Reading sets
         data.load(filename=tab_file_path + '/' + 'Hydrogen_ProductionNodes.tab', format="set", set=model.HydrogenProdNode)
@@ -1204,7 +1211,9 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
 
         if GREEN_H2:
             data.load(filename=tab_file_path + '/' + 'Sets_RESGenerators.tab',format="set", set=model.RESGenerators)
-            data.load(filename=tab_file_path + '/' + 'Sets_NonRenewableGrid.tab',format="set", set=model.NonRenewableGrid)
+            if RENEWABLE_GRID_RULE:
+                data.load(filename=tab_file_path + '/' + 'Sets_NonRenewableGrid.tab',format="set", set=model.NonRenewableGrid)
+                data.load(filename=tab_file_path + '/' + 'Sets_RenewableGrid.tab',format="set", set=model.RenewableGrid)
         # data.load(filename=tab_file_path + '/' + 'Hydrogen_Generators.tab', format="set", set=model.HydrogenGenerators)
 
         def HydrogenLinks_init(model):
@@ -1375,7 +1384,7 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
             for p in model.ReformerPlants:
                 for i in model.Period:
                     costperyear = (model.WACC/(1-((1+model.WACC)**(1-model.ReformerPlantLifetime[p]))))*model.ReformerPlantsCapitalCost[p,i]+model.ReformerPlantFixedOMCost[p,i]
-                    costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.ReformerPlantLifetime[p]))))/(1-(1/(1+model.discountrate)))
+                    costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.ReformerPlantLifetime[p]))))/(1-(1/(1+model.discountrate)))
                     model.ReformerPlantInvCost[p,i] = costperperiod
         model.build_ReformerPlantInvCost = BuildAction(rule=prepReformerPlantInvCost_rule)
 
@@ -1435,7 +1444,7 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
             for i in model.Period:
                 for (n1,n2) in model.HydrogenBidirectionPipelines:
                     costperyear= (model.WACC/(1-((1+model.WACC)**(1-model.hydrogenPipelineLifetime))))*model.PipelineLength[n1,n2]*(model.hydrogenPipelineCapCost[i]) + model.PipelineLength[n1,n2]*model.hydrogenPipelineOMCost[i]
-                    costperperiod =costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.hydrogenPipelineLifetime))))/(1-(1/(1+model.discountrate)))
+                    costperperiod =costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.hydrogenPipelineLifetime))))/(1-(1/(1+model.discountrate)))
                     model.hydrogenPipelineInvCost[n1,n2,i] = costperperiod
         model.build_pipelineInvCost = BuildAction(rule=prepPipelineInvcost_rule)
 
@@ -1444,11 +1453,11 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
                 for (n1, n2) in model.RepurposeDirectionalLinks:
                     if (n1,n2) in model.HydrogenBidirectionPipelines:
                         costperyear= (model.WACC/(1-((1+model.WACC)**(1-model.hydrogenPipelineLifetime))))*model.PipelineLength[n1,n2]*(model.hydrogenPipelineCapCost[i]) + model.PipelineLength[n1,n2]*model.hydrogenPipelineOMCost[i]
-                        costperperiod =costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.hydrogenPipelineLifetime))))/(1-(1/(1+model.discountrate)))
+                        costperperiod =costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.hydrogenPipelineLifetime))))/(1-(1/(1+model.discountrate)))
                         model.repurposedPipelineInvCost[n1,n2,i] = costperperiod*repurposeCostFactor
                     else:
                         costperyear= (model.WACC/(1-((1+model.WACC)**(1-model.hydrogenPipelineLifetime))))*model.PipelineLength[n2,n1]*(model.hydrogenPipelineCapCost[i]) + model.PipelineLength[n2,n1]*model.hydrogenPipelineOMCost[i]
-                        costperperiod =costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.hydrogenPipelineLifetime))))/(1-(1/(1+model.discountrate)))
+                        costperperiod =costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.hydrogenPipelineLifetime))))/(1-(1/(1+model.discountrate)))
                         model.repurposedPipelineInvCost[n1,n2,i] = costperperiod*repurposeCostFactor
         model.build_repurposedPipelineInvCost = BuildAction(rule=prepRepurposedPipelineInvcost_rule)
                 
@@ -1456,7 +1465,7 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
         def prepHydrogenStorageInvcost_rule(model):
             for i in model.Period:
                 costperyear =(model.WACC/(1-((1+model.WACC)**(1-model.hydrogenStorageLifetime))))*model.hydrogenStorageCapitalCost[i]+model.hydrogenStorageFixedOMCost[i]
-                costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.hydrogenStorageLifetime))))/(1-(1/(1+model.discountrate)))
+                costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.hydrogenStorageLifetime))))/(1-(1/(1+model.discountrate)))
                 model.hydrogenStorageInvCost[i] = costperperiod
         model.build_hydrogenStorageInvCost = BuildAction(rule=prepHydrogenStorageInvcost_rule)
 
@@ -1523,13 +1532,13 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
             for i in model.Period:
                 for (n1,n2) in model.CO2BidirectionalPipelines:
                     costperyear = (model.WACC / (1 - ((1 + model.WACC) ** (1-model.CO2PipelineLifetime)))) * model.PipelineLength[n1,n2] * model.CO2PipelineCapCost + model.PipelineLength[n1,n2] * model.CO2PipelineOMCost
-                    costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*5), value(model.CO2PipelineLifetime))))/(1-(1/(1+model.discountrate)))
+                    costperperiod = costperyear*(1-(1+model.discountrate)**-(min(value((len(model.Period)-i+1)*model.LeapYearsInvestment), value(model.CO2PipelineLifetime))))/(1-(1/(1+model.discountrate)))
                     model.CO2PipelineInvCost[n1,n2,i] = costperperiod
 
                 for n in model.CO2SequestrationNodes:
                     #Assume infinite lifetime of storage site -> annual cost approaches WACC * capital cost instead of the previous formula for equivalent annual cost
                     costperyear = model.WACC * model.CO2StorageSiteCapitalCost[n] + model.StorageSiteFixedOMCost[n]
-                    costperperiod = costperyear * (1 - (1 + model.discountrate)**-(value((len(model.Period)-i+1)*5)))/(1-(1/(1+model.discountrate)))
+                    costperperiod = costperyear * (1 - (1 + model.discountrate)**-(value((len(model.Period)-i+1)*model.LeapYearsInvestment)))/(1-(1/(1+model.discountrate)))
                     model.CO2StorageSiteInvCost[n,i] = costperperiod
         model.build_CO2InvCosts = BuildAction(rule=prepCO2InvCosts_rule)
 
@@ -2425,6 +2434,11 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
         def hydrogen_production_rule(model,n,h,i,w):
             return model.hydrogenProducedElectro_ton[n,h,i,w] == model.powerForHydrogen[n,h,i,w] / model.elyzerPowerConsumptionPerTon[i]
         model.hydrogen_production = Constraint(model.HydrogenProdNode, model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_production_rule)
+        
+        if not ONLY_GREEN:
+            def normal_prod_requirement_rule(model, w, i):
+                return sum(model.seasScale[s] * model.hydrogenProducedElectro_ton[n,h,i,w] for n in model.HydrogenProdNode for (s, h) in model.HoursOfSeason) >= GREEN_PROD_REQUIREMENT[i-1]
+            model.normal_prod_requirement_cons = Constraint(model.Scenario, model.Period, rule=normal_prod_requirement_rule)
 
         if not Reformer_H2:
             def reformer_off_rule(model,n,p,h,i,w):
@@ -2458,60 +2472,154 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
             
             if RENEWABLE_GRID_RULE:
             # Temporal and spatial rule, remember to add powerForGreenHydrogen in el flow balance!!!
-                if SPATIAL_AND_TEMPORAL_GH2:
-                    def hydrogen_spatio_temporal_rule(model,n,i,h,w):
-                        return model.powerForGreenHydrogen[n,h,i,w] <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
-                    model.hydrogen_spatio_temporal = Constraint(model.NonRenewableGrid, model.Operationalhour, model.Scenario, rule=hydrogen_spatio_temporal_rule)
-                elif ONLY_TEMPORAL_GH2:
-                    def hydrogen_temporal_rule(model,h,i,w):
-                        return sum(model.powerForGreenHydrogen[n,h,j,w] for (n,j) in model.NonRenewableGrid if j==i) <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for (n,g) in model.GeneratorsOfNode if g in model.RESGenerators)
-                    model.hydrogen_temporal = Constraint(model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_temporal_rule)
-                elif ONLY_SPATIAL_GH2:
-                    def hydrogen_spatio_rule(model,n,i,w):
-                        return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for h in model.Operationalhour for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
-                    model.hydrogen_spatio = Constraint(model.NonRenewableGrid, model.Scenario, rule=hydrogen_spatio_rule)
+                def maintain_renewable_grid_rule(model,n,i,w):
+                    if n in model.WindfarmMapping.keys():
+                        all_gen = 0
+                        VRES_gen = 0
+                        for node in model.WindfarmMapping[n]:
+                            all_gen += sum(model.genOperational[n,g,h,i,w] for h in model.Operationalhour for g in model.Generator if (n,g) in model.GeneratorsOfNode)
+                            VRES_gen += sum(model.genOperational[n,g,h,i,w] for h in model.Operationalhour for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
+                        return (0.9 * all_gen <= VRES_gen)
+                    else:
+                        return (0.9 * sum(model.genOperational[n,g,h,i,w] for h in model.Operationalhour for g in model.Generator if (n,g) in model.GeneratorsOfNode)) <= sum(model.genOperational[n,g,h,i,w] for h in model.Operationalhour for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
+                model.maintain_renewable_grid = Constraint(model.RenewableGrid, model.Scenario, rule=maintain_renewable_grid_rule)
 
                 # Additivity (investment) rule
                 if ADDITIVITY_GH2:
                     def hydrogen_additivity_rule(model,n,i):
-                        return model.elyzerGreenCapBuilt[n,i] <= sum(model.genInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
+                        if n in model.WindfarmMapping.keys():
+                            installed_VRES = 0
+                            for node in model.WindfarmMapping[n]:
+                                installed_VRES += sum(model.genInvCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode)
+                            return model.elyzerGreenCapBuilt[n,i] <= installed_VRES
+                        else:
+                            return model.elyzerGreenCapBuilt[n,i] <= sum(model.genInvCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
                     model.hydrogen_additivity = Constraint(model.NonRenewableGrid, rule=hydrogen_additivity_rule)
-            else:
-                if SPATIAL_AND_TEMPORAL_GH2:
-                    def hydrogen_spatio_temporal_rule(model,n,h,i,w):
-                        return model.powerForGreenHydrogen[n,h,i,w] <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
-                    model.hydrogen_spatio_temporal = Constraint(model.HydrogenProdNode, model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_spatio_temporal_rule)
-                elif ONLY_TEMPORAL_GH2:
-                    def hydrogen_temporal_rule(model,h,i,w):
-                        return sum(model.powerForGreenHydrogen[n,h,i,w] for n in model.HydrogenProdNode) <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for (n,g) in model.GeneratorsOfNode if g in model.RESGenerators)
-                    model.hydrogen_temporal = Constraint(model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_temporal_rule)
-                elif ONLY_SPATIAL_GH2:
-                    def hydrogen_spatio_rule(model,n,i,w):
-                        return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for h in model.Operationalhour for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
-                    model.hydrogen_spatio = Constraint(model.HydrogenProdNode, model.Period, model.Scenario, rule=hydrogen_spatio_rule)
 
+                    if SPATIAL_AND_TEMPORAL_GH2:
+                        def hydrogen_spatio_temporal_rule(model,n,i,h,w):
+                            if n in model.WindfarmMapping.keys():
+                                generated_VRES = 0
+                                for node in model.WindfarmMapping[n]:
+                                    generated_VRES += sum(model.genCapAvail[node,g,h,w,i]*model.RESgenInstalledCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode)
+                                return model.powerForGreenHydrogen[n,h,i,w] <= generated_VRES
+                            else:
+                                return model.powerForGreenHydrogen[n,h,i,w] <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
+                        model.hydrogen_spatio_temporal = Constraint(model.NonRenewableGrid, model.Operationalhour, model.Scenario, rule=hydrogen_spatio_temporal_rule)
+                    elif ONLY_TEMPORAL_GH2:
+                        def hydrogen_temporal_rule(model,h,i,w):
+                            return sum(model.powerForGreenHydrogen[n,h,j,w] for (n,j) in model.NonRenewableGrid if j==i) <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for (n,g) in model.GeneratorsOfNode if g in model.RESGenerators)
+                        model.hydrogen_temporal = Constraint(model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_temporal_rule)
+                    elif ONLY_SPATIAL_GH2:
+                        def hydrogen_spatio_rule(model,n,i,w):
+                            if n in model.WindfarmMapping.keys():
+                                generated_VRES = 0
+                                for node in model.WindfarmMapping[n]:
+                                    generated_VRES += sum(model.genCapAvail[node,g,h,w,i]*model.RESgenInstalledCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode for h in model.Operationalhour)
+                                return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= generated_VRES
+                            else:
+                                return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode for h in model.Operationalhour)
+                        model.hydrogen_spatio = Constraint(model.NonRenewableGrid, model.Scenario, rule=hydrogen_spatio_rule)
+                else:
+                    if SPATIAL_AND_TEMPORAL_GH2:
+                        def hydrogen_spatio_temporal_rule(model,n,i,h,w):
+                            if n in model.WindfarmMapping.keys():
+                                generated_VRES = 0
+                                for node in model.WindfarmMapping[n]:
+                                    generated_VRES += sum(model.genCapAvail[node,g,h,w,i]*model.genInstalledCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode)
+                                return model.powerForGreenHydrogen[n,h,i,w] <= generated_VRES
+                            else:
+                                return model.powerForGreenHydrogen[n,h,i,w] <= sum(model.genCapAvail[n,g,h,w,i]*model.genInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
+                        model.hydrogen_spatio_temporal = Constraint(model.NonRenewableGrid, model.Operationalhour, model.Scenario, rule=hydrogen_spatio_temporal_rule)
+                    elif ONLY_TEMPORAL_GH2:
+                        def hydrogen_temporal_rule(model,h,i,w):
+                            return sum(model.powerForGreenHydrogen[n,h,j,w] for (n,j) in model.NonRenewableGrid if j==i) <= sum(model.genCapAvail[n,g,h,w,i]*model.genInstalledCap[n,g,i] for (n,g) in model.GeneratorsOfNode if g in model.RESGenerators)
+                        model.hydrogen_temporal = Constraint(model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_temporal_rule)
+                    elif ONLY_SPATIAL_GH2:
+                        def hydrogen_spatio_rule(model,n,i,w):
+                            if n in model.WindfarmMapping.keys():
+                                generated_VRES = 0
+                                for node in model.WindfarmMapping[n]:
+                                    generated_VRES += sum(model.genCapAvail[node,g,h,w,i]*model.genInstalledCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode for h in model.Operationalhour)
+                                return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= generated_VRES
+                            else:
+                                return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= sum(model.genCapAvail[n,g,h,w,i]*model.genInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode for h in model.Operationalhour)
+                        model.hydrogen_spatio = Constraint(model.NonRenewableGrid, model.Scenario, rule=hydrogen_spatio_rule)
+                
+            else:
                 # Additivity (investment) rule
                 if ADDITIVITY_GH2:
                     def hydrogen_additivity_rule(model,n,i):
-                        return model.elyzerGreenCapBuilt[n,i] <= sum(model.genInvCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
+                        if n in model.WindfarmMapping.keys():
+                            installed_VRES = 0
+                            for node in model.WindfarmMapping[n]:
+                                installed_VRES += sum(model.genInvCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode)
+                            return model.elyzerGreenCapBuilt[n,i] <= installed_VRES
+                        else:
+                            return model.elyzerGreenCapBuilt[n,i] <= sum(model.genInvCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
                     model.hydrogen_additivity = Constraint(model.HydrogenProdNode, model.Period, rule=hydrogen_additivity_rule)
-                # Volume requirement 
-            def green_prod_requirement_rule(model, w, i):
-                if GREEN_PROD_REQUIREMENT[i-1] > 0:
-                    # Sum the green hydrogen ANNUAL production over all relevant indices.
-                    return sum(model.seasScale[s] * model.hydrogenGreenProducedElectro_ton[n,h,i,w] for n in model.HydrogenProdNode for (s, h) in model.HoursOfSeason) >= GREEN_PROD_REQUIREMENT[i-1]
+
+                    if SPATIAL_AND_TEMPORAL_GH2:
+                        def hydrogen_spatio_temporal_rule(model,n,h,i,w):
+                            if n in model.WindfarmMapping.keys():
+                                generated_VRES = 0
+                                for node in model.WindfarmMapping[n]:
+                                    generated_VRES += sum(model.genCapAvail[node,g,h,w,i]*model.RESgenInstalledCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode)
+                                return model.powerForGreenHydrogen[n,h,i,w] <= generated_VRES
+                            else:
+                                return model.powerForGreenHydrogen[n,h,i,w] <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
+                        model.hydrogen_spatio_temporal = Constraint(model.HydrogenProdNode, model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_spatio_temporal_rule)
+                    elif ONLY_TEMPORAL_GH2:
+                        def hydrogen_temporal_rule(model,h,i,w):
+                            return sum(model.powerForGreenHydrogen[n,i,w,h] for n in model.HydrogenProdNode) <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for (n,g) in model.GeneratorsOfNode if g in model.RESGenerators)
+                        model.hydrogen_temporal = Constraint(model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_temporal_rule)
+                    elif ONLY_SPATIAL_GH2:
+                        def hydrogen_spatio_rule(model,n,i,w):
+                            if n in model.WindfarmMapping.keys():
+                                generated_VRES = 0
+                                for node in model.WindfarmMapping[n]:
+                                    generated_VRES += sum(model.genCapAvail[node,g,h,w,i]*model.RESgenInstalledCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode for h in model.Operationalhour)
+                                return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= generated_VRES
+                            else:
+                                return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= sum(model.genCapAvail[n,g,h,w,i]*model.RESgenInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode for h in model.Operationalhour)
+                        model.hydrogen_spatio = Constraint(model.HydrogenProdNode, model.Period, model.Scenario, rule=hydrogen_spatio_rule)
                 else:
-                    return Constraint.Skip      
+                    if SPATIAL_AND_TEMPORAL_GH2:
+                        def hydrogen_spatio_temporal_rule(model,n,h,i,w):
+                            if n in model.WindfarmMapping.keys():
+                                generated_VRES = 0
+                                for node in model.WindfarmMapping[n]:
+                                    generated_VRES += sum(model.genCapAvail[node,g,h,w,i]*model.genInstalledCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode)
+                                return model.powerForGreenHydrogen[n,h,i,w] <= generated_VRES
+                            else:
+                                return model.powerForGreenHydrogen[n,h,i,w] <= sum(model.genCapAvail[n,g,h,w,i]*model.genInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode)
+                        model.hydrogen_spatio_temporal = Constraint(model.HydrogenProdNode, model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_spatio_temporal_rule)
+                    elif ONLY_TEMPORAL_GH2:
+                        def hydrogen_temporal_rule(model,h,i,w):
+                            return sum(model.powerForGreenHydrogen[n,i,w,h] for n in model.HydrogenProdNode) <= sum(model.genCapAvail[n,g,h,w,i]*model.genInstalledCap[n,g,i] for (n,g) in model.GeneratorsOfNode if g in model.RESGenerators)
+                        model.hydrogen_temporal = Constraint(model.Operationalhour, model.Period, model.Scenario, rule=hydrogen_temporal_rule)
+                    elif ONLY_SPATIAL_GH2:
+                        def hydrogen_spatio_rule(model,n,i,w):
+                            if n in model.WindfarmMapping.keys():
+                                generated_VRES = 0
+                                for node in model.WindfarmMapping[n]:
+                                    generated_VRES += sum(model.genCapAvail[node,g,h,w,i]*model.genInstalledCap[node,g,i] for g in model.RESGenerators if (node,g) in model.GeneratorsOfNode for h in model.Operationalhour)
+                                return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= generated_VRES
+                            else:
+                                return sum(model.powerForGreenHydrogen[n,h,i,w] for h in model.Operationalhour) <= sum(model.genCapAvail[n,g,h,w,i]*model.genInstalledCap[n,g,i] for g in model.RESGenerators if (n,g) in model.GeneratorsOfNode for h in model.Operationalhour)
+                        model.hydrogen_spatio = Constraint(model.HydrogenProdNode, model.Period, model.Scenario, rule=hydrogen_spatio_rule)
+
+                
+                # Volume requirement 
+        
+            def green_prod_requirement_rule(model, w, i):
+                return sum(model.seasScale[s] * model.hydrogenGreenProducedElectro_ton[n,h,i,w] for n in model.HydrogenProdNode for (s, h) in model.HoursOfSeason) >= GREEN_PROD_REQUIREMENT[i-1]
             model.green_prod_requirement_cons = Constraint(model.Scenario, model.Period, rule=green_prod_requirement_rule)
 
             # Production investment requirement
             def green_inv_requirement_rule(model, i):
-                if GREEN_INV_REQUIREMENT[i-1] > 0:
-                    return sum(model.elyzerGreenTotalCap[n,i] for n in model.HydrogenProdNode) >= GREEN_INV_REQUIREMENT[i-1] * model.elyzerPowerConsumptionPerTon[i]
-                else:
-                    return Constraint.Skip
+                return sum(model.elyzerGreenTotalCap[n,i] for n in model.HydrogenProdNode) >= GREEN_INV_REQUIREMENT[i-1] * model.elyzerPowerConsumptionPerTon[i]
             model.green_inv_requirement_cons = Constraint(model.Period, rule=green_inv_requirement_rule)
-                
 
 
         def hydrogen_production_reformer_capacity_rule(model,n,p,h,i,w):
@@ -2537,9 +2645,9 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
         # 	return sum(model.seasScale[s] * model.hydrogenSold[n,h,i,w] for (s,h) in model.HoursOfSeason) >= model.hydrogenDemand[n,i]
         # model.meet_hydrogen_demand = Constraint(model.HydrogenProdNode, model.Period, model.Scenario, rule=meet_hydrogen_demand_rule)
 
-        def offshore_hydrogen_production_capacity_rule(model,n,h,i,w):
-            return model.powerForHydrogen[n,h,i,w] + sum(model.transmissionOperational[n,n2,h,i,w] + model.transmissionOperational[n2,n,h,i,w] for n2 in model.NodesLinked[n]) <= model.offshoreConvInstalledCap[n,i]
-        model.offshore_hydrogen_production_capacity = Constraint(model.OffshoreEnergyHubs, model.Operationalhour, model.Period, model.Scenario, rule=offshore_hydrogen_production_capacity_rule)
+        # def offshore_hydrogen_production_capacity_rule(model,n,h,i,w):
+        #     return model.powerForHydrogen[n,h,i,w] + sum(model.transmissionOperational[n,n2,h,i,w] + model.transmissionOperational[n2,n,h,i,w] for n2 in model.NodesLinked[n]) <= model.offshoreConvInstalledCap[n,i]
+        # model.offshore_hydrogen_production_capacity = Constraint(model.OffshoreEnergyHubs, model.Operationalhour, model.Period, model.Scenario, rule=offshore_hydrogen_production_capacity_rule)
 
         def hydrogen_storage_balance_rule(model,n,h,i,w):
             if h in model.FirstHoursOfRegSeason or h in model.FirstHoursOfPeakSeason:
@@ -2765,6 +2873,55 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
             writer.writerow(["Objective function value:" + str(value(instance.Obj))])
             writer.writerow(["Scientific notation:", str(value(instance.Obj))])
             writer.writerow(["Solver status:",results.solver.status])
+            f.close()
+        
+        if 'results_objective_detailed' in include_results:
+            print("{hour}:{minute}:{second}: Writing objective functions results in results_objective_detailed.csv...".format(
+                hour=datetime.now().strftime("%H"), minute=datetime.now().strftime("%M"), second=datetime.now().strftime("%S")))
+            f = open(result_file_path + "/" + 'results_objective_detailed.csv', 'w', newline='')
+            writer = csv.writer(f)
+            writer.writerow(["Node","Period","GeneratorInvCost","PowerStorageInvCost","OffshoreConverterInvCost","EquallyDistributedShedCost",
+                             "EquallyDistributedOperationalCost","EquallyDistributedNGimportCost","ElyzerInvCost","ReformerPlantInvCost",
+                             "EquallyDistributedReformerOperationalCost","HydrogenStorageInvCost","EquallyDistributedCO2StorageDevelopmentCost",
+                             "SteelCost","CementCost","AmmoniaCost","EquallyDistributedOilCost","EquallyDistributedTransportLoadShed","GreenElyzerInvCost"])
+            for n in instance.Node:
+                for i in instance.Period:
+                    writer.writerow([n,inv_per[int(i-1)],
+                    value(instance.discount_multiplier[i]*sum(instance.genInvCost[g,i]* instance.genInvCap[n,g,i] for g in instance.Generator if (n,g) in instance.GeneratorsOfNode)),
+                    value(instance.discount_multiplier[i]*sum((instance.storPWInvCost[b,i]*instance.storPWInvCap[n,b,i]+instance.storENInvCost[b,i]*instance.storENInvCap[n,b,i]) for b in instance.Storage if (n,b) in instance.StoragesOfNode)),
+                    value(instance.discount_multiplier[i]*instance.offshoreConvInvCost[i] * instance.offshoreConvInvCap[n,i] if n in instance.OffshoreEnergyHubs else 0),
+                    value(instance.discount_multiplier[i]*instance.shedcomponent[i]/len(instance.Node)),
+                    value(instance.discount_multiplier[i]*instance.operationalcost[i]/len(instance.Node)),
+                    value((instance.discount_multiplier[i]*instance.ng_import_cost[i]/len(instance.NaturalGasNode)) if n in instance.NaturalGasNode else 0),
+                    value((instance.discount_multiplier[i]*instance.elyzerInvCost[i] * instance.elyzerCapBuilt[n,i]) if n in instance.HydrogenProdNode else 0),
+                    value(instance.discount_multiplier[i]*sum(instance.ReformerPlantInvCost[p,i] * instance.ReformerCapBuilt[n,p,i] for p in instance.ReformerPlants if n in instance.ReformerLocations)),
+                    value(instance.discount_multiplier[i]*instance.reformerOperationalCost[i]/len(instance.ReformerLocations) if n in instance.ReformerLocations else 0),
+                    value(instance.discount_multiplier[i]*instance.hydrogenStorageBuilt[n,i] * instance.hydrogenStorageInvCost[i] if n in instance.HydrogenProdNode else 0),
+                    value((instance.discount_multiplier[i]*instance.co2_storage_site_development_cost[i]/len(instance.CO2SequestrationNodes)) if n in instance.CO2SequestrationNodes else 0),
+                    value(instance.discount_multiplier[i]*(sum(instance.steel_plantInvCost[p,i] * instance.steelPlantBuiltCapacity[n,p,i] for p in instance.SteelPlants) + instance.steel_opex[i]/len(instance.SteelProducers)) if n in instance.SteelProducers else 0),
+                    value(instance.discount_multiplier[i]*(sum(instance.cement_plantInvCost[p,i] * instance.cementPlantBuiltCapacity[n,p,i] for p in instance.CementPlants) + instance.cement_opex[i]/len(instance.CementProducers)) if n in instance.CementProducers else 0),
+                    value(instance.discount_multiplier[i]*(sum(instance.ammonia_plantInvCost[p,i] * instance.ammoniaPlantBuiltCapacity[n,p,i] for p in instance.AmmoniaPlants) + instance.ammonia_opex[i]/len(instance.AmmoniaProducers)) if n in instance.AmmoniaProducers else 0),
+                    value(instance.discount_multiplier[i]*instance.oil_opex[i]/len(instance.OilProducers) if n in instance.OilProducers else 0),
+                    value(instance.discount_multiplier[i]*instance.transport_load_shed_cost[i]/len(instance.Node)),
+                    value(instance.discount_multiplier[i]*instance.elyzerInvCost[i] * instance.elyzerGreenCapBuilt[n,i] if (n in instance.HydrogenProdNode) and GREEN_H2 else 0)
+                    ])
+            f.close()
+            
+        if 'results_objective_transmission' in include_results:
+            print("{hour}:{minute}:{second}: Writing objective functions results in results_objective_transmission.csv...".format(
+                hour=datetime.now().strftime("%H"), minute=datetime.now().strftime("%M"), second=datetime.now().strftime("%S")))
+            f = open(result_file_path + "/" + 'results_objective_transmission.csv', 'w', newline='')
+            writer = csv.writer(f)
+            writer.writerow(["FromNode","ToNode","Period","TransmissionInvCost","HydrogenPipelineInvCost","RepurposedPipeilineInvCost","CO2PipelineInvCost"])
+            for n1 in instance.Node:
+                for n2 in instance.Node:
+                    for i in instance.Period:
+                        writer.writerow([n1,n2,inv_per[int(i-1)],
+                        value(instance.discount_multiplier[i]*instance.transmissionInvCost[n1,n2,i]*instance.transmissionInvCap[n1,n2,i] if (n1,n2) in instance.BidirectionalArc else 0),
+                        value(instance.discount_multiplier[i]*instance.hydrogenPipelineInvCost[n1,n2,i] * instance.hydrogenPipelineBuilt[n1,n2,i] if (n1,n2) in instance.HydrogenBidirectionPipelines else 0),
+                        value(instance.discount_multiplier[i]*instance.repurposedPipelineInvCost[n1,n2,i] * instance.repurposedPipelineBuilt[n1,n2,i] if (n1,n2) in instance.RepurposeDirectionalLinks else 0),
+                        value(instance.discount_multiplier[i]*instance.CO2PipelineInvCost[n1,n2,i] * instance.CO2PipelineBuilt[n1,n2,i] if (n1,n2) in instance.CO2BidirectionalPipelines else 0)
+                        ])
             f.close()
 
         if HEATMODULE:
@@ -3588,8 +3745,11 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
                     for i in instance.Period:
                         for w in instance.Scenario:
                             for (s, h) in instance.HoursOfSeason:
+                                gh2_prod = 0
+                                if GREEN_H2:
+                                    gh2_prod =value(instance.hydrogenGreenProducedElectro_ton[n,h,i,w])
                                 my_string = [n, inv_per[int(i - 1)], w, s, h,
-                                             value(sum(instance.hydrogenProducedReformer_ton[n,p,h,i,w] if n in instance.ReformerLocations else 0 for p in instance.ReformerPlants) + instance.hydrogenProducedElectro_ton[n,h,i,w]),
+                                             value(sum(instance.hydrogenProducedReformer_ton[n,p,h,i,w] if n in instance.ReformerLocations else 0 for p in instance.ReformerPlants) + instance.hydrogenProducedElectro_ton[n,h,i,w])+gh2_prod,
                                              value(instance.hydrogenChargeStorage[n,h,i,w]),
                                              value(instance.hydrogenDischargeStorage[n,h,i,w]),
                                              value(sum(instance.hydrogenForPower[g,n,h,i,w] for g in instance.HydrogenGenerators)),
@@ -3845,7 +4005,17 @@ def run_empire(name, tab_file_path, result_file_path, scenariogeneration, scenar
                                      value(sum(instance.storENInstalledCap[n,b,i] for n in instance.Node if (n,b) in instance.StoragesOfNode)),
                                      value(sum(instance.discount_multiplier[i]*(instance.storPWInvCap[n,b,i]*instance.storPWInvCost[b,i] + instance.storENInvCap[n,b,i]*instance.storENInvCost[b,i]) for n in instance.Node if (n,b) in instance.StoragesOfNode)),
                                      expected_discharge])
-            f.close()
+            writer.writerow([""])
+            if GREEN_H2:
+                writer.writerow(["Period","Scenario","Production dual (weighted)","Investment dual (weighted)"])
+                for i in instance.Period:
+                    for w in instance.Scenario:
+                        investment_dual = value(instance.dual[instance.green_inv_requirement_cons[i]]/(instance.discount_multiplier[i]*instance.operationalDiscountrate))
+                        production_dual = value(instance.dual[instance.green_prod_requirement_cons[w,i]]/(instance.discount_multiplier[i]*instance.operationalDiscountrate*instance.sceProbab[w]))
+                        writer.writerow([i,w,production_dual,investment_dual])
+            f.close()   
+
+
 
         if HEATMODULE:
             if 'results_output_OperationalEL' in include_results:

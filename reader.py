@@ -73,6 +73,7 @@ def generate_tab_files(filepath, tab_file_path, HEATMODULE=True, hydrogen=False,
         read_sets(filepath, 'Sets.xlsx', 'RESGenerators', tab_file_path = tab_file_path)
         if RENEWABLE_GRID_RULE:
             read_file(filepath, 'Sets.xlsx', 'NonRenewableGrid', [0, 1], tab_file_path = tab_file_path)
+            read_file(filepath, 'Sets.xlsx', 'RenewableGrid', [0, 1], tab_file_path = tab_file_path)
     # Reading GeneratorPeriod
     read_file(filepath, 'Generator.xlsx', 'FixedOMCosts', [0, 1, 2], tab_file_path = tab_file_path)
     read_file(filepath, 'Generator.xlsx', 'CapitalCosts', [0, 1, 2], tab_file_path = tab_file_path)
